@@ -19,8 +19,7 @@ import textwrap
 import threading
 import time
 import typing
-from typing import (Any, Callable, Dict, Iterable, List, Optional, Set, Tuple,
-                    Union)
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 import colorama
 import filelock
@@ -1442,7 +1441,9 @@ class RetryingVmProvisioner(object):
         # the instance type in the target region. If not, fail early
         # instead of trying to provision and failing later.
         try:
-            need_provision = to_provision.cloud.check_quota_available(to_provision)
+            need_provision = (
+                True  # to_provision.cloud.check_quota_available(to_provision)
+            )
 
         except Exception as e:  # pylint: disable=broad-except
             need_provision = True
@@ -2106,8 +2107,9 @@ class RetryingVmProvisioner(object):
         prev_handle = to_provision_config.prev_handle
         prev_cluster_ever_up = to_provision_config.prev_cluster_ever_up
         launchable_retries_disabled = self._dag is None or self._optimize_target is None
-
         failover_history: List[Exception] = list()
+
+        logger.info(to_provision)
 
         style = colorama.Style
         fore = colorama.Fore

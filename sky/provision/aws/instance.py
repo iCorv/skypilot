@@ -130,6 +130,7 @@ def _ec2_call_with_retry_on_server_error(
                 "ServiceUnavailable",
                 "InternalError",
                 "Unavailable",
+                "ReservationCapacityExceeded",
             ]:
                 time.sleep(backoff.current_backoff())
                 logger.debug(f"create_instances: {error_code}, retrying.")

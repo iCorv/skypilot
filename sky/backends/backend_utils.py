@@ -1085,6 +1085,10 @@ def write_cluster_config(
 
     # Rename the tmp file to the final YAML path.
     os.rename(tmp_yaml_path, yaml_path)
+    # copy yaml to local path
+    import shutil
+
+    shutil.copy(yaml_path, "/tmp/ray.yaml")
     usage_lib.messages.usage.update_ray_yaml(yaml_path)
     return config_dict
 
