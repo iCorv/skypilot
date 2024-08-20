@@ -340,9 +340,9 @@ def run_instances(
             node_tag.append(
                 {"Key": "Name", "Value": f"sky-{cluster_name_on_cloud}-worker"}
             )
-        target_instance.tags = [
-            tag for tag in target_instance.tags if tag["Key"][:4] != "aws:"
-        ]
+        # target_instance.tags = [
+        #     tag for tag in target_instance.tags if tag["Key"][:4] != "aws:"
+        # ]
         ec2.meta.client.create_tags(
             Resources=[target_instance.id],
             Tags=target_instance.tags + node_tag,

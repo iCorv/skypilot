@@ -711,7 +711,7 @@ def get_config_schema():
                     "type": "boolean",
                 },
                 "security_group_name": (_PRORPERTY_NAME_OR_CLUSTER_NAME_TO_PROPERTY),
-                "specific_reservations": {
+                "capacity_reservation": {
                     "type": "string",
                 },
                 **_LABELS_SCHEMA,

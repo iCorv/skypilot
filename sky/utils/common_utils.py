@@ -27,7 +27,7 @@ from sky.skylet import constants
 from sky.utils import ux_utils
 from sky.utils import validator
 
-_USER_HASH_FILE = os.path.expanduser('~/.sky/user_hash')
+_USER_HASH_FILE = os.path.expanduser("~/.sky/user_hash")
 USER_HASH_LENGTH = 8
 USER_HASH_LENGTH_IN_CLUSTER_NAME = 4
 
@@ -36,12 +36,12 @@ USER_HASH_LENGTH_IN_CLUSTER_NAME = 4
 # we should be fine with 2 chars.
 CLUSTER_NAME_HASH_LENGTH = 2
 
-_COLOR_PATTERN = re.compile(r'\x1b[^m]*m')
+_COLOR_PATTERN = re.compile(r"\x1b[^m]*m")
 
-_PAYLOAD_PATTERN = re.compile(r'<sky-payload>(.*)</sky-payload>')
-_PAYLOAD_STR = '<sky-payload>{}</sky-payload>'
+_PAYLOAD_PATTERN = re.compile(r"<sky-payload>(.*)</sky-payload>")
+_PAYLOAD_STR = "<sky-payload>{}</sky-payload>"
 
-_VALID_ENV_VAR_REGEX = '[a-zA-Z_][a-zA-Z0-9_]*'
+_VALID_ENV_VAR_REGEX = "[a-zA-Z_][a-zA-Z0-9_]*"
 
 logger = sky_logging.init_logger(__name__)
 
@@ -92,7 +92,7 @@ def get_user_hash(force_fresh_hash: bool = False) -> str:
 
     if not force_fresh_hash and os.path.exists(_USER_HASH_FILE):
         # Read from cached user hash file.
-        with open(_USER_HASH_FILE, 'r', encoding='utf-8') as f:
+        with open(_USER_HASH_FILE, "r", encoding="utf-8") as f:
             # Remove invalid characters.
             user_hash = f.read().strip()
         if _is_valid_user_hash(user_hash):
@@ -109,7 +109,7 @@ def get_user_hash(force_fresh_hash: bool = False) -> str:
         # be intentionally using a different hash, e.g. we want to keep the
         # user_hash for usage collection the same on the jobs/serve controller
         # as users' local client.
-        with open(_USER_HASH_FILE, 'w', encoding='utf-8') as f:
+        with open(_USER_HASH_FILE, "w", encoding="utf-8") as f:
             f.write(user_hash)
     return user_hash
 
@@ -120,9 +120,9 @@ def base36_encode(hex_str: str) -> str:
 
     def _base36_encode(num: int) -> str:
         if num == 0:
-            return '0'
-        alphabet = '0123456789abcdefghijklmnopqrstuvwxyz'
-        base36 = ''
+            return "0"
+        alphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
+        base36 = ""
         while num != 0:
             num, i = divmod(num, 36)
             base36 = alphabet[i] + base36
@@ -148,14 +148,15 @@ def check_cluster_name_is_valid(cluster_name: Optional[str]) -> None:
         with ux_utils.print_exception_no_traceback():
             raise exceptions.InvalidClusterNameError(
                 f'Cluster name "{cluster_name}" is invalid; '
-                'ensure it is fully matched by regex (e.g., '
-                'only contains letters, numbers and dash): '
-                f'{valid_regex}')
+                "ensure it is fully matched by regex (e.g., "
+                "only contains letters, numbers and dash): "
+                f"{valid_regex}"
+            )
 
 
-def make_cluster_name_on_cloud(display_name: str,
-                               max_length: Optional[int] = 15,
-                               add_user_hash: bool = True) -> str:
+def make_cluster_name_on_cloud(
+    display_name: str, max_length: Optional[int] = 15, add_user_hash: bool = True
+) -> str:
     """Generate valid cluster name on cloud that is unique to the user.
 
     This is to map the cluster name to a valid length and character set for
@@ -176,60 +177,69 @@ def make_cluster_name_on_cloud(display_name: str,
         add_user_hash: Whether to append user hash to the cluster name.
     """
 
-    cluster_name_on_cloud = re.sub(r'[._]', '-', display_name).lower()
+    cluster_name_on_cloud = re.sub(r"[._]", "-", display_name).lower()
     if display_name != cluster_name_on_cloud:
         logger.debug(
-            f'The user specified cluster name {display_name} might be invalid '
-            f'on the cloud, we convert it to {cluster_name_on_cloud}.')
-    user_hash = ''
+            f"The user specified cluster name {display_name} might be invalid "
+            f"on the cloud, we convert it to {cluster_name_on_cloud}."
+        )
+    user_hash = ""
     if add_user_hash:
         user_hash = get_user_hash()[:USER_HASH_LENGTH_IN_CLUSTER_NAME]
-        user_hash = f'-{user_hash}'
+        user_hash = f"-{user_hash}"
     user_hash_length = len(user_hash)
 
-    if (max_length is None or
-            len(cluster_name_on_cloud) <= max_length - user_hash_length):
-        return f'{cluster_name_on_cloud}{user_hash}'
+    if (
+        max_length is None
+        or len(cluster_name_on_cloud) <= max_length - user_hash_length
+    ):
+        return f"{cluster_name_on_cloud}{user_hash}"
     # -1 is for the dash between cluster name and cluster name hash.
-    truncate_cluster_name_length = (max_length - CLUSTER_NAME_HASH_LENGTH - 1 -
-                                    user_hash_length)
+    truncate_cluster_name_length = (
+        max_length - CLUSTER_NAME_HASH_LENGTH - 1 - user_hash_length
+    )
     truncate_cluster_name = cluster_name_on_cloud[:truncate_cluster_name_length]
-    if truncate_cluster_name.endswith('-'):
-        truncate_cluster_name = truncate_cluster_name.rstrip('-')
+    if truncate_cluster_name.endswith("-"):
+        truncate_cluster_name = truncate_cluster_name.rstrip("-")
     assert truncate_cluster_name_length > 0, (cluster_name_on_cloud, max_length)
     display_name_hash = hashlib.md5(display_name.encode()).hexdigest()
     # Use base36 to reduce the length of the hash.
     display_name_hash = base36_encode(display_name_hash)
-    return (f'{truncate_cluster_name}'
-            f'-{display_name_hash[:CLUSTER_NAME_HASH_LENGTH]}{user_hash}')
+    return (
+        f"{truncate_cluster_name}"
+        f"-{display_name_hash[:CLUSTER_NAME_HASH_LENGTH]}{user_hash}"
+    )
 
 
 def cluster_name_in_hint(cluster_name: str, cluster_name_on_cloud: str) -> str:
     if cluster_name_on_cloud.startswith(cluster_name):
         return repr(cluster_name)
-    return f'{cluster_name!r} (name on cloud: {cluster_name_on_cloud!r})'
+    return f"{cluster_name!r} (name on cloud: {cluster_name_on_cloud!r})"
 
 
-def get_global_job_id(job_timestamp: str,
-                      cluster_name: Optional[str],
-                      job_id: str,
-                      task_id: Optional[int] = None,
-                      is_managed_job: bool = False) -> str:
+def get_global_job_id(
+    job_timestamp: str,
+    cluster_name: Optional[str],
+    job_id: str,
+    task_id: Optional[int] = None,
+    is_managed_job: bool = False,
+) -> str:
     """Returns a unique job run id for each job run.
 
     A job run is defined as the lifetime of a job that has been launched.
     """
-    managed_job_str = 'managed-' if is_managed_job else ''
-    _, sep, timestamp = job_timestamp.partition('sky-')
-    job_timestamp = f'{sep}{managed_job_str}{timestamp}'
-    global_job_id = f'{job_timestamp}_{cluster_name}_{job_id}'
+    managed_job_str = "managed-" if is_managed_job else ""
+    _, sep, timestamp = job_timestamp.partition("sky-")
+    job_timestamp = f"{sep}{managed_job_str}{timestamp}"
+    global_job_id = f"{job_timestamp}_{cluster_name}_{job_id}"
     if task_id is not None:
-        global_job_id += f'-{task_id}'
+        global_job_id += f"-{task_id}"
     return global_job_id
 
 
 class Backoff:
     """Exponential backoff with jittering."""
+
     MULTIPLIER = 1.6
     JITTER = 0.4
 
@@ -248,10 +258,10 @@ class Backoff:
             self._initial = False
             self._backoff = min(self._initial_backoff, self._max_backoff)
         else:
-            self._backoff = min(self._backoff * self.MULTIPLIER,
-                                self._max_backoff)
-        self._backoff += random.uniform(-self.JITTER * self._backoff,
-                                        self.JITTER * self._backoff)
+            self._backoff = min(self._backoff * self.MULTIPLIER, self._max_backoff)
+        self._backoff += random.uniform(
+            -self.JITTER * self._backoff, self.JITTER * self._backoff
+        )
         return self._backoff
 
 
@@ -264,11 +274,11 @@ def get_pretty_entry_point() -> str:
     """
     argv = sys.argv
     basename = os.path.basename(argv[0])
-    if basename == 'sky':
+    if basename == "sky":
         # Turn '/.../anaconda/envs/py36/bin/sky' into 'sky', but keep other
         # things like 'examples/app.py'.
         argv[0] = basename
-    return ' '.join(argv)
+    return " ".join(argv)
 
 
 def user_and_hostname_hash() -> str:
@@ -297,17 +307,17 @@ def user_and_hostname_hash() -> str:
     thus changing the SG name makes these clusters unrecognizable.
     """
     hostname_hash = hashlib.md5(socket.gethostname().encode()).hexdigest()[-4:]
-    return f'{getpass.getuser()}-{hostname_hash}'
+    return f"{getpass.getuser()}-{hostname_hash}"
 
 
 def read_yaml(path) -> Dict[str, Any]:
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
     return config
 
 
 def read_yaml_all(path: str) -> List[Dict[str, Any]]:
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, "r", encoding="utf-8") as f:
         config = yaml.safe_load_all(f)
         configs = list(config)
         if not configs:
@@ -317,7 +327,7 @@ def read_yaml_all(path: str) -> List[Dict[str, Any]]:
 
 
 def dump_yaml(path, config) -> None:
-    with open(path, 'w', encoding='utf-8') as f:
+    with open(path, "w", encoding="utf-8") as f:
         f.write(dump_yaml_str(config))
 
 
@@ -334,14 +344,12 @@ def dump_yaml_str(config):
         dump_func = yaml.dump_all
     else:
         dump_func = yaml.dump
-    return dump_func(config,
-                     Dumper=LineBreakDumper,
-                     sort_keys=False,
-                     default_flow_style=False)
+    return dump_func(
+        config, Dumper=LineBreakDumper, sort_keys=False, default_flow_style=False
+    )
 
 
-def make_decorator(cls, name_or_fn: Union[str, Callable],
-                   **ctx_kwargs) -> Callable:
+def make_decorator(cls, name_or_fn: Union[str, Callable], **ctx_kwargs) -> Callable:
     """Make the cls a decorator.
 
     class cls:
@@ -371,17 +379,16 @@ def make_decorator(cls, name_or_fn: Union[str, Callable],
         return _wrapper
     else:
         if not inspect.isfunction(name_or_fn):
-            raise ValueError(
-                'Should directly apply the decorator to a function.')
+            raise ValueError("Should directly apply the decorator to a function.")
 
         @functools.wraps(name_or_fn)
         def _record(*args, **kwargs):
             nonlocal name_or_fn
             f = name_or_fn
-            func_name = getattr(f, '__qualname__', f.__name__)
-            module_name = getattr(f, '__module__', '')
+            func_name = getattr(f, "__qualname__", f.__name__)
+            module_name = getattr(f, "__module__", "")
             if module_name:
-                full_name = f'{module_name}.{func_name}'
+                full_name = f"{module_name}.{func_name}"
             else:
                 full_name = func_name
             with cls(full_name, **ctx_kwargs):
@@ -403,7 +410,7 @@ def retry(method, max_retries=3, initial_backoff=1):
             except Exception as e:  # pylint: disable=broad-except
                 try_count += 1
                 if try_count < max_retries:
-                    logger.warning(f'Caught {e}. Retrying.')
+                    logger.warning(f"Caught {e}. Retrying.")
                     time.sleep(backoff.current_backoff())
                 else:
                     raise
@@ -442,7 +449,7 @@ def decode_payload(payload_str: str) -> Any:
     """
     matched = _PAYLOAD_PATTERN.findall(payload_str)
     if not matched:
-        raise ValueError(f'Invalid payload string: \n{payload_str}')
+        raise ValueError(f"Invalid payload string: \n{payload_str}")
     payload_str = matched[0]
     payload = json.loads(payload_str)
     return payload
@@ -462,14 +469,15 @@ def class_fullname(cls, skip_builtins: bool = True):
     Returns:
         The full name of the class.
     """
-    module_name = getattr(cls, '__module__', '')
-    if not module_name or (module_name == 'builtins' and skip_builtins):
+    module_name = getattr(cls, "__module__", "")
+    if not module_name or (module_name == "builtins" and skip_builtins):
         return cls.__name__
-    return f'{cls.__module__}.{cls.__name__}'
+    return f"{cls.__module__}.{cls.__name__}"
 
 
-def format_exception(e: Union[Exception, SystemExit, KeyboardInterrupt],
-                     use_bracket: bool = False) -> str:
+def format_exception(
+    e: Union[Exception, SystemExit, KeyboardInterrupt], use_bracket: bool = False
+) -> str:
     """Format an exception to a string.
 
     Args:
@@ -481,8 +489,8 @@ def format_exception(e: Union[Exception, SystemExit, KeyboardInterrupt],
     bright = colorama.Style.BRIGHT
     reset = colorama.Style.RESET_ALL
     if use_bracket:
-        return f'{bright}[{class_fullname(e.__class__)}]{reset} {e}'
-    return f'{bright}{class_fullname(e.__class__)}:{reset} {e}'
+        return f"{bright}[{class_fullname(e.__class__)}]{reset} {e}"
+    return f"{bright}{class_fullname(e.__class__)}:{reset} {e}"
 
 
 def remove_color(s: str):
@@ -494,7 +502,7 @@ def remove_color(s: str):
     Returns:
         A string without color.
     """
-    return _COLOR_PATTERN.sub('', s)
+    return _COLOR_PATTERN.sub("", s)
 
 
 def remove_file_if_exists(path: str):
@@ -506,13 +514,13 @@ def remove_file_if_exists(path: str):
     try:
         os.remove(path)
     except FileNotFoundError:
-        logger.debug(f'Tried to remove {path} but failed to find it. Skip.')
+        logger.debug(f"Tried to remove {path} but failed to find it. Skip.")
         pass
 
 
 def is_wsl() -> bool:
     """Detect if running under Windows Subsystem for Linux (WSL)."""
-    return 'microsoft' in platform.uname()[3].lower()
+    return "microsoft" in platform.uname()[3].lower()
 
 
 def find_free_port(start_port: int) -> int:
@@ -526,11 +534,11 @@ def find_free_port(start_port: int) -> int:
     for port in range(start_port, 65535):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             try:
-                s.bind(('', port))
+                s.bind(("", port))
                 return port
             except OSError:
                 pass
-    raise OSError('No free ports available.')
+    raise OSError("No free ports available.")
 
 
 def is_valid_env_var(name: str) -> bool:
@@ -544,10 +552,10 @@ def format_float(num: Union[float, int], precision: int = 1) -> str:
     If it is not a whole number, it will show upto precision decimal point."""
     if isinstance(num, int):
         return str(num)
-    return '{:.0f}'.format(num) if num.is_integer() else f'{num:.{precision}f}'
+    return "{:.0f}".format(num) if num.is_integer() else f"{num:.{precision}f}"
 
 
-def validate_schema(obj, schema, err_msg_prefix='', skip_none=True):
+def validate_schema(obj, schema, err_msg_prefix="", skip_none=True):
     """Validates an object against a given JSON schema.
 
     Args:
@@ -568,44 +576,51 @@ def validate_schema(obj, schema, err_msg_prefix='', skip_none=True):
     try:
         validator.SchemaValidator(schema).validate(obj)
     except jsonschema.ValidationError as e:
-        if e.validator == 'additionalProperties':
-            if tuple(e.schema_path) == ('properties', 'envs',
-                                        'additionalProperties'):
+        if e.validator == "additionalProperties":
+            if tuple(e.schema_path) == ("properties", "envs", "additionalProperties"):
                 # Hack. Here the error is Task.envs having some invalid keys. So
                 # we should not print "unsupported field".
                 #
                 # This will print something like:
                 # 'hello world' does not match any of the regexes: <regex>
-                err_msg = (err_msg_prefix +
-                           'The `envs` field contains invalid keys:\n' +
-                           e.message)
+                err_msg = (
+                    err_msg_prefix
+                    + "The `envs` field contains invalid keys:\n"
+                    + e.message
+                )
             else:
                 err_msg = err_msg_prefix
-                known_fields = set(e.schema.get('properties', {}).keys())
+                known_fields = set(e.schema.get("properties", {}).keys())
                 for field in e.instance:
                     if field not in known_fields:
                         most_similar_field = difflib.get_close_matches(
-                            field, known_fields, 1)
+                            field, known_fields, 1
+                        )
                         if most_similar_field:
-                            err_msg += (f'Instead of {field!r}, did you mean '
-                                        f'{most_similar_field[0]!r}?')
+                            err_msg += (
+                                f"Instead of {field!r}, did you mean "
+                                f"{most_similar_field[0]!r}?"
+                            )
                         else:
-                            err_msg += f'Found unsupported field {field!r}.'
+                            err_msg += f"Found unsupported field {field!r}."
         else:
             message = e.message
             # Object in jsonschema is represented as dict in Python. Replace
             # 'object' with 'dict' for better readability.
-            message = message.replace('type \'object\'', 'type \'dict\'')
+            message = message.replace("type 'object'", "type 'dict'")
             # Example e.json_path value: '$.resources'
-            err_msg = (err_msg_prefix + message +
-                       f'. Check problematic field(s): {e.json_path}')
+            err_msg = (
+                err_msg_prefix
+                + message
+                + f". Check problematic field(s): {e.json_path}"
+            )
 
     if err_msg:
         with ux_utils.print_exception_no_traceback():
             raise ValueError(err_msg)
 
 
-def get_cleaned_username(username: str = '') -> str:
+def get_cleaned_username(username: str = "") -> str:
     """Cleans the username. Underscores are allowed, as we will
      handle it when mapping to the cluster_name_on_cloud in
      common_utils.make_cluster_name_on_cloud.
@@ -627,39 +642,38 @@ def get_cleaned_username(username: str = '') -> str:
     """
     username = username or getpass.getuser()
     username = username.lower()
-    username = re.sub(r'[^a-z0-9-_]', '', username)
-    username = re.sub(r'^[0-9-]+', '', username)
-    username = re.sub(r'-$', '', username)
+    username = re.sub(r"[^a-z0-9-_]", "", username)
+    username = re.sub(r"^[0-9-]+", "", username)
+    username = re.sub(r"-$", "", username)
     username = username[:63]
     return username
 
 
-def fill_template(template_name: str, variables: Dict,
-                  output_path: str) -> None:
+def fill_template(template_name: str, variables: Dict, output_path: str) -> None:
     """Create a file from a Jinja template and return the filename."""
-    assert template_name.endswith('.j2'), template_name
+    assert template_name.endswith(".j2"), template_name
     root_dir = os.path.dirname(os.path.dirname(__file__))
-    template_path = os.path.join(root_dir, 'templates', template_name)
+    template_path = os.path.join(root_dir, "templates", template_name)
     if not os.path.exists(template_path):
         raise FileNotFoundError(f'Template "{template_name}" does not exist.')
-    with open(template_path, 'r', encoding='utf-8') as fin:
+    with open(template_path, "r", encoding="utf-8") as fin:
         template = fin.read()
     output_path = os.path.abspath(os.path.expanduser(output_path))
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
     # Write out yaml config.
     j2_template = jinja2.Template(template)
     content = j2_template.render(**variables)
-    with open(output_path, 'w', encoding='utf-8') as fout:
+    with open(output_path, "w", encoding="utf-8") as fout:
         fout.write(content)
 
 
 def deprecated_function(
-        func: Callable,
-        name: str,
-        deprecated_name: str,
-        removing_version: str,
-        override_argument: Optional[Dict[str, Any]] = None) -> Callable:
+    func: Callable,
+    name: str,
+    deprecated_name: str,
+    removing_version: str,
+    override_argument: Optional[Dict[str, Any]] = None,
+) -> Callable:
     """Decorator for creating deprecated functions, for backward compatibility.
 
     It will result in a warning being emitted when the function is used.
@@ -667,14 +681,16 @@ def deprecated_function(
 
     @functools.wraps(func)
     def new_func(*args, **kwargs):
-        override_argument_str = ''
+        override_argument_str = ""
         if override_argument:
-            override_argument_str = ', '.join(
-                f'{k}={v}' for k, v in override_argument.items())
+            override_argument_str = ", ".join(
+                f"{k}={v}" for k, v in override_argument.items()
+            )
         logger.warning(
-            f'Call to deprecated function {deprecated_name}, which will be '
-            f'removed in {removing_version}. Please use '
-            f'{name}({override_argument_str}) instead.')
+            f"Call to deprecated function {deprecated_name}, which will be "
+            f"removed in {removing_version}. Please use "
+            f"{name}({override_argument_str}) instead."
+        )
         return func(*args, **kwargs)
 
     return new_func

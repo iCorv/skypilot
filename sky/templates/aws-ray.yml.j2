@@ -87,12 +87,12 @@ available_node_types:
           #   SpotOptions:
           #       MaxPrice: MAX_HOURLY_PRICE
       {% endif %}
-      {% if specific_reservations %}
+      {% if capacity_reservation %}
       InstanceMarketOptions:
           MarketType: capacity-block
       CapacityReservationSpecification:
         CapacityReservationTarget:
-          CapacityReservationId: {{specific_reservations}}
+          CapacityReservationId: {{capacity_reservation}}
       {% endif %}
       # Use cloud init in UserData to set up the authorized_keys to get
       # around the number of keys limit and permission issues with
